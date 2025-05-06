@@ -2,6 +2,10 @@ provider "aws" {
   region = "ap-south-1"
 }
 
+# ------------------------------------------
+# DATA SOURCES
+# ------------------------------------------
+
 # Fetch existing VPC by name
 data "aws_vpc" "custom" {
   filter {
@@ -31,17 +35,26 @@ data "aws_security_group" "ecs_sg" {
   }
 }
 
-# ECS Cluster
+# ------------------------------------------
+# ECS CLUSTER
+# ------------------------------------------
+
 resource "aws_ecs_cluster" "private_cluster" {
   name = "private-test-cluster"
 }
 
-# ECR Repository
+# ------------------------------------------
+# ECR REPOSITORY
+# ------------------------------------------
+
 resource "aws_ecr_repository" "private_repo" {
   name = "private-flask-repo"
 }
 
-# ECS Task Execution Role
+# ------------------------------------------
+# IAM ROLE FOR ECS TASK EXECUTION
+# ------------------------------------------
+
 resource "aws_iam_role" "ecs_task_execution" {
   name = "ecsTaskExecutionRole"
 
@@ -62,7 +75,10 @@ resource "aws_iam_role_policy_attachment" "ecs_task_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# ECS Task Definition
+# ------------------------------------------
+# ECS TASK DEFINITION
+# ------------------------------------------
+
 resource "aws_ecs_task_definition" "private_task" {
   family                   = "private-test-task"
   requires_compatibilities = ["FARGATE"]
@@ -73,7 +89,7 @@ resource "aws_ecs_task_definition" "private_task" {
 
   container_definitions = jsonencode([{
     name  = "my-final-test-container",
-    image = "dummy", # Overwritten in imagedefinitions.json
+    image = "dummy", # Will be replaced in imagedefinitions.json
     essential = true,
     portMappings = [{
       containerPort = 5000,
@@ -82,7 +98,10 @@ resource "aws_ecs_task_definition" "private_task" {
   }])
 }
 
-# ECS Service
+# ------------------------------------------
+# ECS SERVICE
+# ------------------------------------------
+
 resource "aws_ecs_service" "private_service" {
   name            = "private-test-service"
   cluster         = aws_ecs_cluster.private_cluster.id
@@ -98,7 +117,7 @@ resource "aws_ecs_service" "private_service" {
 }
 
 # ------------------------------------------
-# IAM Role for CodeBuild
+# IAM ROLE FOR CODEBUILD
 # ------------------------------------------
 
 resource "aws_iam_role" "codebuild_service_role" {
@@ -116,6 +135,7 @@ resource "aws_iam_role" "codebuild_service_role" {
   })
 }
 
+# Attach policies required for ECR access and CodeBuild actions
 resource "aws_iam_role_policy_attachment" "codebuild_ecr_policy" {
   role       = aws_iam_role.codebuild_service_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
