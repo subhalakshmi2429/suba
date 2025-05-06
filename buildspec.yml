@@ -4,7 +4,7 @@ env:
   variables:
     AWS_REGION: "ap-south-1"
     ECR_REPO_NAME: "private-flask-repo"
-    CONTAINER_NAME: "my-final-test-container"  
+    CONTAINER_NAME: "test-container"
 
 phases:
   install:
@@ -25,7 +25,14 @@ phases:
     commands:
       - echo "Running unit tests..."
       - mkdir -p tests
-      - echo "import unittest\n\nclass SampleTest(unittest.TestCase):\n    def test_addition(self):\n        self.assertEqual(2 + 2, 4)" > tests/test_sample.py
+      - |
+        cat <<EOF > tests/test_sample.py
+        import unittest
+
+        class SampleTest(unittest.TestCase):
+            def test_addition(self):
+                self.assertEqual(2 + 2, 4)
+        EOF
       - python -m unittest discover -s tests || true
 
       - echo "Building Docker image..."
@@ -33,7 +40,7 @@ phases:
       - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
 
       - echo "Creating ECS imagedefinitions.json file..."
-      - echo "[{\"name\":\"my-final-test-container\",\"imageUri\":\"$REPOSITORY_URI:$IMAGE_TAG\"}]" > imagedefinitions.json
+      - echo "[{\"name\":\"$CONTAINER_NAME\",\"imageUri\":\"$REPOSITORY_URI:$IMAGE_TAG\"}]" > imagedefinitions.json
 
   post_build:
     commands:
