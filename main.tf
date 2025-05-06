@@ -41,7 +41,7 @@ resource "aws_ecr_repository" "private_repo" {
   name = "private-flask-repo"
 }
 
-# IAM role
+# ECS Task Execution Role
 resource "aws_iam_role" "ecs_task_execution" {
   name = "ecsTaskExecutionRole"
 
@@ -62,7 +62,7 @@ resource "aws_iam_role_policy_attachment" "ecs_task_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# Task Definition
+# ECS Task Definition
 resource "aws_ecs_task_definition" "private_task" {
   family                   = "private-test-task"
   requires_compatibilities = ["FARGATE"]
@@ -73,7 +73,7 @@ resource "aws_ecs_task_definition" "private_task" {
 
   container_definitions = jsonencode([{
     name  = "my-final-test-container",
-    image = "dummy",
+    image = "dummy", # Overwritten in imagedefinitions.json
     essential = true,
     portMappings = [{
       containerPort = 5000,
@@ -95,4 +95,33 @@ resource "aws_ecs_service" "private_service" {
     security_groups = [data.aws_security_group.ecs_sg.id]
     assign_public_ip = false
   }
+}
+
+# ------------------------------------------
+# IAM Role for CodeBuild
+# ------------------------------------------
+
+resource "aws_iam_role" "codebuild_service_role" {
+  name = "codebuild-service-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "codebuild.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "codebuild_ecr_policy" {
+  role       = aws_iam_role.codebuild_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+resource "aws_iam_role_policy_attachment" "codebuild_basic_policy" {
+  role       = aws_iam_role.codebuild_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
 }
