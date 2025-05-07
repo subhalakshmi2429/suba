@@ -44,16 +44,15 @@ resource "aws_ecs_cluster" "private_cluster" {
 # ECR REPOSITORY
 # ------------------------------------------
 
-data "aws_ecr_repository" "existing_repo" {
-  name = "private-flask-repo"
-  count = 0
-  # only used when resource fails to create
-}
-
 resource "aws_ecr_repository" "private_repo" {
   name = "private-flask-repo"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
   lifecycle {
-    ignore_errors = true
+    prevent_destroy = true
   }
 }
 
@@ -95,7 +94,7 @@ resource "aws_ecs_task_definition" "private_task" {
 
   container_definitions = jsonencode([{
     name  = "my-final-test-container",
-    image = "dummy", # Will be replaced in imagedefinitions.json
+    image = "dummy", # Will be replaced by imagedefinitions.json
     essential = true,
     portMappings = [{
       containerPort = 5000,
@@ -141,33 +140,6 @@ resource "aws_iam_role" "codebuild_service_role" {
   })
 }
 
-# Attach permissions for ECR and CodeBuild actions
 resource "aws_iam_role_policy_attachment" "codebuild_ecr_policy" {
   role       = aws_iam_role.codebuild_service_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
-}
-
-resource "aws_iam_role_policy_attachment" "codebuild_basic_policy" {
-  role       = aws_iam_role.codebuild_service_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
-}
-
-# Custom inline policy to allow CodeBuild to manage IAM roles
-resource "aws_iam_role_policy" "codebuild_iam_access" {
-  name = "AllowIAMRoleCreation"
-  role = aws_iam_role.codebuild_service_role.id
-
-  policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect   = "Allow",
-      Action   = [
-        "iam:CreateRole",
-        "iam:PutRolePolicy",
-        "iam:AttachRolePolicy",
-        "iam:PassRole"
-      ],
-      Resource = "*"
-    }]
-  })
-}
+  policy_arn = "arn:aws:iam::aws:policy/A
