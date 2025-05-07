@@ -6,7 +6,6 @@ provider "aws" {
 # DATA SOURCES
 # ------------------------------------------
 
-# Fetch existing VPC by name
 data "aws_vpc" "custom" {
   filter {
     name   = "tag:Name"
@@ -14,7 +13,6 @@ data "aws_vpc" "custom" {
   }
 }
 
-# Fetch private subnets in the VPC
 data "aws_subnets" "custom" {
   filter {
     name   = "vpc-id"
@@ -22,7 +20,6 @@ data "aws_subnets" "custom" {
   }
 }
 
-# Fetch custom security group
 data "aws_security_group" "ecs_sg" {
   filter {
     name   = "group-name"
@@ -47,8 +44,17 @@ resource "aws_ecs_cluster" "private_cluster" {
 # ECR REPOSITORY
 # ------------------------------------------
 
+data "aws_ecr_repository" "existing_repo" {
+  name = "private-flask-repo"
+  count = 0
+  # only used when resource fails to create
+}
+
 resource "aws_ecr_repository" "private_repo" {
   name = "private-flask-repo"
+  lifecycle {
+    ignore_errors = true
+  }
 }
 
 # ------------------------------------------
@@ -135,7 +141,7 @@ resource "aws_iam_role" "codebuild_service_role" {
   })
 }
 
-# Attach policies required for ECR access and CodeBuild actions
+# Attach permissions for ECR and CodeBuild actions
 resource "aws_iam_role_policy_attachment" "codebuild_ecr_policy" {
   role       = aws_iam_role.codebuild_service_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
@@ -144,4 +150,24 @@ resource "aws_iam_role_policy_attachment" "codebuild_ecr_policy" {
 resource "aws_iam_role_policy_attachment" "codebuild_basic_policy" {
   role       = aws_iam_role.codebuild_service_role.name
   policy_arn = "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
+}
+
+# Custom inline policy to allow CodeBuild to manage IAM roles
+resource "aws_iam_role_policy" "codebuild_iam_access" {
+  name = "AllowIAMRoleCreation"
+  role = aws_iam_role.codebuild_service_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect   = "Allow",
+      Action   = [
+        "iam:CreateRole",
+        "iam:PutRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:PassRole"
+      ],
+      Resource = "*"
+    }]
+  })
 }
