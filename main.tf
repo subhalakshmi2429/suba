@@ -2,9 +2,9 @@ provider "aws" {
   region = "ap-south-1"
 }
 
-# ------------------------------------------
+# ----------------------------
 # DATA SOURCES
-# ------------------------------------------
+# ----------------------------
 
 data "aws_vpc" "custom" {
   filter {
@@ -32,57 +32,27 @@ data "aws_security_group" "ecs_sg" {
   }
 }
 
-# ------------------------------------------
+# Use existing ECR repo (don't try to create)
+data "aws_ecr_repository" "private_repo" {
+  name = "private-flask-repo"
+}
+
+# Use existing ecsTaskExecutionRole (avoid terraform creating it)
+data "aws_iam_role" "ecs_task_execution" {
+  name = "ecsTaskExecutionRole"
+}
+
+# ----------------------------
 # ECS CLUSTER
-# ------------------------------------------
+# ----------------------------
 
 resource "aws_ecs_cluster" "private_cluster" {
   name = "private-test-cluster"
 }
 
-# ------------------------------------------
-# ECR REPOSITORY
-# ------------------------------------------
-
-resource "aws_ecr_repository" "private_repo" {
-  name = "private-flask-repo"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  lifecycle {
-    prevent_destroy = true
-  }
-}
-
-# ------------------------------------------
-# IAM ROLE FOR ECS TASK EXECUTION
-# ------------------------------------------
-
-resource "aws_iam_role" "ecs_task_execution" {
-  name = "ecsTaskExecutionRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17",
-    Statement = [{
-      Effect = "Allow",
-      Principal = {
-        Service = "ecs-tasks.amazonaws.com"
-      },
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-resource "aws_iam_role_policy_attachment" "ecs_task_policy" {
-  role       = aws_iam_role.ecs_task_execution.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-# ------------------------------------------
+# ----------------------------
 # ECS TASK DEFINITION
-# ------------------------------------------
+# ----------------------------
 
 resource "aws_ecs_task_definition" "private_task" {
   family                   = "private-test-task"
@@ -90,11 +60,11 @@ resource "aws_ecs_task_definition" "private_task" {
   cpu                      = "256"
   memory                   = "512"
   network_mode             = "awsvpc"
-  execution_role_arn       = aws_iam_role.ecs_task_execution.arn
+  execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([{
     name  = "my-final-test-container",
-    image = "dummy", # Will be replaced by imagedefinitions.json
+    image = "dummy", # Replaced by imagedefinitions.json in CodePipeline
     essential = true,
     portMappings = [{
       containerPort = 5000,
@@ -103,9 +73,9 @@ resource "aws_ecs_task_definition" "private_task" {
   }])
 }
 
-# ------------------------------------------
+# ----------------------------
 # ECS SERVICE
-# ------------------------------------------
+# ----------------------------
 
 resource "aws_ecs_service" "private_service" {
   name            = "private-test-service"
@@ -121,9 +91,9 @@ resource "aws_ecs_service" "private_service" {
   }
 }
 
-# ------------------------------------------
+# ----------------------------
 # IAM ROLE FOR CODEBUILD
-# ------------------------------------------
+# ----------------------------
 
 resource "aws_iam_role" "codebuild_service_role" {
   name = "codebuild-service-role"
@@ -143,4 +113,29 @@ resource "aws_iam_role" "codebuild_service_role" {
 resource "aws_iam_role_policy_attachment" "codebuild_ecr_policy" {
   role       = aws_iam_role.codebuild_service_role.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
+}
+
+resource "aws_iam_role_policy_attachment" "codebuild_basic_policy" {
+  role       = aws_iam_role.codebuild_service_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
+}
+
+# Custom inline policy to allow IAM changes (if needed)
+resource "aws_iam_role_policy" "codebuild_iam_access" {
+  name = "AllowIAMRoleCreation"
+  role = aws_iam_role.codebuild_service_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect   = "Allow",
+      Action   = [
+        "iam:CreateRole",
+        "iam:PutRolePolicy",
+        "iam:AttachRolePolicy",
+        "iam:PassRole"
+      ],
+      Resource = "*"
+    }]
+  })
 }
