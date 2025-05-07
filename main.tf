@@ -130,6 +130,7 @@ resource "aws_iam_role_policy" "codebuild_iam_access" {
     Statement = [{
       Effect   = "Allow",
       Action   = [
+        "iam:GetRole",
         "iam:CreateRole",
         "iam:PutRolePolicy",
         "iam:AttachRolePolicy",
