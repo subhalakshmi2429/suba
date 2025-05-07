@@ -32,12 +32,10 @@ data "aws_security_group" "ecs_sg" {
   }
 }
 
-# Use existing ECR repo (don't try to create)
 data "aws_ecr_repository" "private_repo" {
   name = "private-flask-repo"
 }
 
-# Use existing ecsTaskExecutionRole (avoid terraform creating it)
 data "aws_iam_role" "ecs_task_execution" {
   name = "ecsTaskExecutionRole"
 }
@@ -120,7 +118,6 @@ resource "aws_iam_role_policy_attachment" "codebuild_basic_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AWSCodeBuildDeveloperAccess"
 }
 
-# Custom inline policy to allow IAM changes (if needed)
 resource "aws_iam_role_policy" "codebuild_iam_access" {
   name = "AllowIAMRoleCreation"
   role = aws_iam_role.codebuild_service_role.id
@@ -139,4 +136,29 @@ resource "aws_iam_role_policy" "codebuild_iam_access" {
       Resource = "*"
     }]
   })
+}
+
+# ----------------------------
+# CODEBUILD PROJECT
+# ----------------------------
+
+resource "aws_codebuild_project" "backend_build" {
+  name          = "backend-build"
+  service_role  = aws_iam_role.codebuild_service_role.arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type    = "BUILD_GENERAL1_SMALL"
+    image           = "aws/codebuild/standard:7.0"
+    type            = "LINUX_CONTAINER"
+    privileged_mode = true
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = "buildspec.yml"
+  }
 }
