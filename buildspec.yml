@@ -5,6 +5,8 @@ env:
     AWS_REGION: "ap-south-1"
     ECR_REPO_NAME: "private-flask-repo"
     CONTAINER_NAME: "my-final-test-container"
+    ECS_CLUSTER_NAME: "<your-cluster-name>"
+    ECS_SERVICE_NAME: "<your-service-name>"
 
 phases:
   install:
@@ -47,6 +49,12 @@ phases:
       - echo "Pushing Docker images to ECR..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - docker push $REPOSITORY_URI:latest
+
+      - echo "Deploying to ECS..."
+      - aws ecs update-service \
+          --cluster $ECS_CLUSTER_NAME \
+          --service $ECS_SERVICE_NAME \
+          --force-new-deployment
 
 artifacts:
   files:
