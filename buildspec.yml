@@ -5,8 +5,8 @@ env:
     AWS_REGION: "ap-south-1"
     ECR_REPO_NAME: "private-flask-repo"
     CONTAINER_NAME: "my-final-test-container"
-    ECS_CLUSTER_NAME: "<your-cluster-name>"
-    ECS_SERVICE_NAME: "<your-service-name>"
+    ECS_CLUSTER_NAME: "private-test-cluster"
+    ECS_SERVICE_NAME: "private-test-service"
 
 phases:
   install:
