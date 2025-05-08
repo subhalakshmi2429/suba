@@ -50,8 +50,20 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - docker push $REPOSITORY_URI:latest
 
+      - echo "Debugging: Printing ECS Cluster and Service Names"
+      - echo "ECS_CLUSTER_NAME: $ECS_CLUSTER_NAME"
+      - echo "ECS_SERVICE_NAME: $ECS_SERVICE_NAME"
+
       - echo "Deploying to ECS..."
       - |
+        if [ -z "$ECS_CLUSTER_NAME" ]; then
+          echo "ECS_CLUSTER_NAME is empty!"
+          exit 1
+        fi
+        if [ -z "$ECS_SERVICE_NAME" ]; then
+          echo "ECS_SERVICE_NAME is empty!"
+          exit 1
+        fi
         aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --force-new-deployment
 
 artifacts:
