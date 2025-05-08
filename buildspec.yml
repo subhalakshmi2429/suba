@@ -51,8 +51,6 @@ phases:
       - docker push $REPOSITORY_URI:latest
 
       - echo "Deploying to ECS..."
-      - echo "Cluster: $ECS_CLUSTER_NAME"
-      - echo "Service: $ECS_SERVICE_NAME"
       - |
         aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --force-new-deployment
 
