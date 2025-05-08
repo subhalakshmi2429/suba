@@ -50,12 +50,10 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - docker push $REPOSITORY_URI:latest
 
-      - echo "Debugging: Printing ECS Cluster and Service Names"
-      - echo "ECS_CLUSTER_NAME: $ECS_CLUSTER_NAME"
-      - echo "ECS_SERVICE_NAME: $ECS_SERVICE_NAME"
-
-      - echo "Deploying to ECS..."
       - |
+        echo "Deploying to ECS..."
+        echo "ECS_CLUSTER_NAME: $ECS_CLUSTER_NAME"
+        echo "ECS_SERVICE_NAME: $ECS_SERVICE_NAME"
         if [ -z "$ECS_CLUSTER_NAME" ]; then
           echo "ECS_CLUSTER_NAME is empty!"
           exit 1
