@@ -1,0 +1,15 @@
+# buildspec-deploy.yml
+version: 0.2
+
+phases:
+  build:
+    commands:
+      - echo "Deploying to ECS..."
+      - aws ecs update-service \
+          --cluster final-test-cluster \
+          --service final-test-service \
+          --force-new-deployment \
+          --region ap-south-1
+artifacts:
+  files:
+    - imagedefinitions.json
