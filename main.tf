@@ -125,8 +125,8 @@ resource "aws_iam_role_policy" "codebuild_iam_access" {
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
-      Action = [
+      Effect   = "Allow",
+      Action   = [
         "iam:GetRole",
         "iam:CreateRole",
         "iam:PutRolePolicy",
@@ -158,9 +158,8 @@ resource "aws_codebuild_project" "backend_build" {
   }
 
   source {
-    type      = "GITHUB"
-    location  = "https://github.com/subhalakshmi2429/suba.git"  # GitHub repository URL
-    buildspec = "buildspec.yml"  # This buildspec is used for the Build stage
+    type      = "CODEPIPELINE"
+    buildspec = "buildspec.yml"
   }
 }
 
@@ -177,6 +176,24 @@ resource "aws_codepipeline" "my_pipeline" {
   }
 
   stage {
+    name = "Source"
+    action {
+      name             = "SourceAction"
+      category         = "Source"
+      owner            = "AWS"
+      provider         = "CodeStarSourceConnection"
+      version          = "1"
+      output_artifacts = ["source-output"]
+      configuration = {
+        ConnectionArn    = "arn:aws:codestar-connections:ap-south-1:123456789012:connection/abc123xyz456"  # Replace this!
+        FullRepositoryId = "subhalakshmi2429/suba"
+        BranchName       = "master"
+        DetectChanges    = "true"
+      }
+    }
+  }
+
+  stage {
     name = "Build"
     action {
       name             = "BuildAction"
@@ -186,8 +203,7 @@ resource "aws_codepipeline" "my_pipeline" {
       input_artifacts  = ["source-output"]
       output_artifacts = ["build-output"]
       configuration = {
-        ProjectName = "backend-build"  # This is your existing CodeBuild project for building the app
-        Buildspec   = "buildspec.yml"  # This is the buildspec for the Build stage
+        ProjectName = aws_codebuild_project.backend_build.name
       }
     }
   }
@@ -201,8 +217,8 @@ resource "aws_codepipeline" "my_pipeline" {
       provider         = "CodeBuild"
       input_artifacts  = ["build-output"]
       configuration = {
-        ProjectName = "ECS-project"  # Replace with your actual ECS CodeBuild project for deployment
-        Buildspec   = "buildspec-deploy.yml"  # Override with the deploy-specific buildspec file
+        ProjectName = "ECS-project"  # Replace with your actual deployment CodeBuild project
+        Buildspec   = "buildspec-deploy.yml"
       }
     }
   }
