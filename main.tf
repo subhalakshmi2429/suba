@@ -163,7 +163,7 @@ resource "aws_iam_role_policy_attachment" "codepipeline_policy" {
 }
 
 # ----------------------------
-# CODEBUILD PROJECT
+# CODEBUILD PROJECTS
 # ----------------------------
 
 resource "aws_codebuild_project" "backend_build" {
@@ -184,6 +184,27 @@ resource "aws_codebuild_project" "backend_build" {
   source {
     type      = "CODEPIPELINE"
     buildspec = "buildspec.yml"
+  }
+}
+
+resource "aws_codebuild_project" "ecs_deploy" {
+  name         = "ecs-deploy"
+  service_role = aws_iam_role.codebuild_service_role.arn
+
+  artifacts {
+    type = "CODEPIPELINE"
+  }
+
+  environment {
+    compute_type    = "BUILD_GENERAL1_SMALL"
+    image           = "aws/codebuild/standard:7.0"
+    type            = "LINUX_CONTAINER"
+    privileged_mode = false
+  }
+
+  source {
+    type      = "CODEPIPELINE"
+    buildspec = "buildspec-deploy.yml"
   }
 }
 
@@ -244,8 +265,7 @@ resource "aws_codepipeline" "my_pipeline" {
       version          = "1"
       input_artifacts  = ["build-output"]
       configuration = {
-        ProjectName = aws_codebuild_project.backend_build.name
-        Buildspec   = "buildspec-deploy.yml"
+        ProjectName = aws_codebuild_project.ecs_deploy.name
       }
     }
   }
