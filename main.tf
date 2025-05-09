@@ -99,11 +99,11 @@ resource "aws_iam_role" "codebuild_service_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect   = "Allow",
       Principal = {
         Service = "codebuild.amazonaws.com"
       },
-      Action = "sts:AssumeRole"
+      Action   = "sts:AssumeRole"
     }]
   })
 }
@@ -148,11 +148,11 @@ resource "aws_iam_role" "codepipeline_role" {
   assume_role_policy = jsonencode({
     Version = "2012-10-17",
     Statement = [{
-      Effect = "Allow",
+      Effect   = "Allow",
       Principal = {
         Service = "codepipeline.amazonaws.com"
       },
-      Action = "sts:AssumeRole"
+      Action   = "sts:AssumeRole"
     }]
   })
 }
@@ -263,9 +263,11 @@ resource "aws_codepipeline" "my_pipeline" {
       owner            = "AWS"
       provider         = "CodeBuild"
       version          = "1"
-      input_artifacts  = ["build-output"]
+      input_artifacts  = ["build-output"]  # Correct artifact name from the Build stage
+      output_artifacts = ["deploy-output"]
       configuration = {
-        ProjectName = aws_codebuild_project.ecs_deploy.name
+        ProjectName = aws_codebuild_project.ecs_deploy.name  # Use correct project name for ECS deploy
+        Buildspec   = "buildspec-deploy.yml"  # Correct path to your deploy buildspec file
       }
     }
   }
