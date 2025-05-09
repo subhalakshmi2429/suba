@@ -61,10 +61,10 @@ resource "aws_ecs_task_definition" "private_task" {
   execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([{
-    name  = "my-final-test-container",
-    image = "dummy", # Replaced by imagedefinitions.json in CodePipeline
+    name      = "my-final-test-container",
+    image     = "dummy", # Replaced by imagedefinitions.json in CodePipeline
     essential = true,
-    portMappings = [ {
+    portMappings = [{
       containerPort = 5000,
       hostPort      = 5000
     }]
@@ -139,12 +139,36 @@ resource "aws_iam_role_policy" "codebuild_iam_access" {
 }
 
 # ----------------------------
+# IAM ROLE FOR CODEPIPELINE
+# ----------------------------
+
+resource "aws_iam_role" "codepipeline_role" {
+  name = "codepipeline-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [{
+      Effect = "Allow",
+      Principal = {
+        Service = "codepipeline.amazonaws.com"
+      },
+      Action = "sts:AssumeRole"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "codepipeline_policy" {
+  role       = aws_iam_role.codepipeline_role.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSCodePipelineFullAccess"
+}
+
+# ----------------------------
 # CODEBUILD PROJECT
 # ----------------------------
 
 resource "aws_codebuild_project" "backend_build" {
-  name          = "backend-build"
-  service_role  = aws_iam_role.codebuild_service_role.arn
+  name         = "backend-build"
+  service_role = aws_iam_role.codebuild_service_role.arn
 
   artifacts {
     type = "CODEPIPELINE"
@@ -168,10 +192,11 @@ resource "aws_codebuild_project" "backend_build" {
 # ----------------------------
 
 resource "aws_codepipeline" "my_pipeline" {
-  name = "MyPipeline"
+  name     = "MyPipeline"
+  role_arn = aws_iam_role.codepipeline_role.arn
 
   artifact_store {
-    location = "codepipeline-ap-south-1-af974c323746-4351-944a-96ce98c44ece"  # Replace with your actual S3 bucket name
+    location = "codepipeline-ap-south-1-af974c323746-4351-944a-96ce98c44ece"  # Replace with your actual S3 bucket
     type     = "S3"
   }
 
@@ -185,7 +210,7 @@ resource "aws_codepipeline" "my_pipeline" {
       version          = "1"
       output_artifacts = ["source-output"]
       configuration = {
-        ConnectionArn    = "arn:aws:codestar-connections:ap-south-1:123456789012:connection/abc123xyz456"  # Replace this!
+        ConnectionArn    = "arn:aws:codestar-connections:ap-south-1:123456789012:connection/abc123xyz456"  # Replace with your connection ARN
         FullRepositoryId = "subhalakshmi2429/suba"
         BranchName       = "master"
         DetectChanges    = "true"
@@ -200,6 +225,7 @@ resource "aws_codepipeline" "my_pipeline" {
       category         = "Build"
       owner            = "AWS"
       provider         = "CodeBuild"
+      version          = "1"
       input_artifacts  = ["source-output"]
       output_artifacts = ["build-output"]
       configuration = {
@@ -215,9 +241,10 @@ resource "aws_codepipeline" "my_pipeline" {
       category         = "Deploy"
       owner            = "AWS"
       provider         = "CodeBuild"
+      version          = "1"
       input_artifacts  = ["build-output"]
       configuration = {
-        ProjectName = "ECS-project"  # Replace with your actual deployment CodeBuild project
+        ProjectName = aws_codebuild_project.backend_build.name
         Buildspec   = "buildspec-deploy.yml"
       }
     }
