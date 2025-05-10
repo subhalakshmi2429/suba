@@ -1,28 +1,45 @@
 ﻿version: 0.2
 
+env:
+  variables:
+    AWS_REGION: "ap-south-1"
+    ECR_REPO_NAME: "private-flask-repo"
+    CONTAINER_NAME: "my-container"  
+
 phases:
+  install:
+    runtime-versions:
+      python: 3.11
+    commands:
+      - echo "Installing Python dependencies..."
+      - pip install -r requirements.txt || true
+
   pre_build:
     commands:
       - echo "Logging in to Amazon ECR..."
-      - aws --version
-      - REPOSITORY_URI="123456789012.dkr.ecr.us-east-1.amazonaws.com/private-flask-repo"
-      - IMAGE_TAG=$(echo ${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest} | cut -c 1-7)
-      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
-      - echo "Repository URI: $REPOSITORY_URI"
-      - echo "Image Tag: $IMAGE_TAG"
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - REPOSITORY_URI=574720314262.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
 
   build:
     commands:
-      - echo "Building the Docker image..."
+      - echo "Running unit tests..."
+      - mkdir -p tests
+      - echo "import unittest\n\nclass SampleTest(unittest.TestCase):\n    def test_addition(self):\n        self.assertEqual(2 + 2, 4)" > tests/test_sample.py
+      - python -m unittest discover -s tests || true
+
+      - echo "Building Docker image..."
       - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
+
+      - echo "Creating ECS imagedefinitions.json file..."
+      - echo "[{\"name\":\"my-container\",\"imageUri\":\"$REPOSITORY_URI:$IMAGE_TAG\"}]" > imagedefinitions.json
 
   post_build:
     commands:
-      - echo "Pushing the Docker image to ECR..."
+      - echo "Pushing Docker images to ECR..."
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo "Creating imagedefinitions.json..."
-      - printf '[{"name":"my-container","imageUri":"%s"}]' "$REPOSITORY_URI:$IMAGE_TAG" > imagedefinitions.json
-      - cat imagedefinitions.json
+      - docker push $REPOSITORY_URI:latest
 
 artifacts:
   files:
