@@ -8,14 +8,28 @@ variable "image_tag" {
   type        = string
 }
 
+# Declare the input variables for subnets and security groups
+variable "subnet_ids" {
+  description = "List of subnet IDs for the ECS service"
+  type        = list(string)
+}
+
+variable "security_group_id" {
+  description = "Security group ID to associate with ECS service"
+  type        = string
+}
+
+# ECR repository
 resource "aws_ecr_repository" "private_flask_repo" {
   name = "private-flask-repo"
 }
 
+# ECS cluster
 resource "aws_ecs_cluster" "project_cluster" {
   name = "project-cluster"
 }
 
+# ECS task definition
 resource "aws_ecs_task_definition" "task_definition" {
   family                   = "flask-task"
   network_mode             = "awsvpc"
@@ -23,17 +37,16 @@ resource "aws_ecs_task_definition" "task_definition" {
   memory                   = "512"
   requires_compatibilities = ["FARGATE"]
 
-  container_definitions = jsonencode([
-    {
-      name      = "my-container"
-      image     = "${aws_ecr_repository.private_flask_repo.repository_url}:${var.image_tag}"
-      cpu       = 256
-      memory    = 512
-      essential = true
-    }
-  ])
+  container_definitions = jsonencode([{
+    name      = "my-container"
+    image     = "${aws_ecr_repository.private_flask_repo.repository_url}:${var.image_tag}"
+    cpu       = 256
+    memory    = 512
+    essential = true
+  }])
 }
 
+# ECS service
 resource "aws_ecs_service" "service" {
   name            = "flask-service"
   cluster         = aws_ecs_cluster.project_cluster.id
@@ -48,6 +61,7 @@ resource "aws_ecs_service" "service" {
   }
 }
 
+# IAM role for ECS task execution
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole"
 
@@ -66,6 +80,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 }
 
+# IAM role policy attachment for ECS task execution
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
   role       = aws_iam_role.ecs_task_execution_role.name
