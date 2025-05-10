@@ -1,35 +1,28 @@
 version: 0.2
 
 phases:
-  install:
-    runtime-versions:
-      python: 3.11
-    commands:
-      - echo Installing dependencies...
-      - pip install --upgrade pip
-      - if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-
   pre_build:
     commands:
       - echo Logging in to Amazon ECR...
-      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 574720314262.dkr.ecr.ap-south-1.amazonaws.com
-      - REPOSITORY_URI=574720314262.dkr.ecr.ap-south-1.amazonaws.com/flask-backend
-      - IMAGE_TAG=latest
+      - aws --version
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+      - REPOSITORY_URI=YOUR_ECR_REPOSITORY_URI_HERE
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo Repository URI: $REPOSITORY_URI
+      - echo Image Tag: $IMAGE_TAG
 
   build:
     commands:
-      - echo Building Docker image...
+      - echo Building the Docker image...
       - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-      - echo Pushing image to ECR...
+      - echo Pushing the Docker image to ECR...
       - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Generating imagedefinitions.json for ECS deployment...
-      - printf '[{"name":"my-container","imageUri":"%s"}]' "$REPOSITORY_URI:$IMAGE_TAG" > imagedefinitions.json
 
   post_build:
     commands:
-      - echo Deploying to ECS...
-      - aws ecs update-service --cluster final-test-cluster --service final-test-service --force-new-deployment --region ap-south-1
-
+      - echo Creating imagedefinitions.json for ECS deployment...
+      - printf '[{"name":"my-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
+      - cat imagedefinitions.json
 artifacts:
   files:
     - imagedefinitions.json
