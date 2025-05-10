@@ -1,4 +1,4 @@
-FROM public.ecr.aws/amazonlinux/amazonlinux:2
+FROM  python:3.9-slim
 
 WORKDIR /app
 
