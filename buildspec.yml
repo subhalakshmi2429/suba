@@ -1,68 +1,39 @@
 version: 0.2
 
-env:
-  variables:
-    AWS_REGION: "ap-south-1"
-    ECR_REPO_NAME: "private-flask-repo"
-    CONTAINER_NAME: "my-final-test-container"
-    ECS_CLUSTER_NAME: "private-test-cluster"
-    ECS_SERVICE_NAME: "private-test-service"
-
 phases:
   install:
     runtime-versions:
+      docker: 20
       python: 3.11
     commands:
-      - echo "Installing Python dependencies..."
-      - pip install -r requirements.txt || true
+      - echo Installing dependencies...
+      - pip install --upgrade pip
+      - pip install -r requirements.txt || true  # If you have requirements.txt
 
   pre_build:
     commands:
-      - echo "Logging in to Amazon ECR..."
-      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - REPOSITORY_URI=574720314262.dkr.ecr.$AWS_REGION.amazonaws.com/$ECR_REPO_NAME
-      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $REPOSITORY_URI
+      - echo Logging in to Amazon ECR...
+      - aws ecr get-login-password --region ap-south-1 | docker login --username AWS --password-stdin 574720314262.dkr.ecr.ap-south-1.amazonaws.com
+      - REPOSITORY_URI=574720314262.dkr.ecr.ap-south-1.amazonaws.com/flask-backend
+      - IMAGE_TAG=latest
 
   build:
     commands:
-      - echo "Running unit tests..."
-      - mkdir -p tests
-      - |
-        cat <<EOF > tests/test_sample.py
-        import unittest
-
-        class SampleTest(unittest.TestCase):
-            def test_addition(self):
-                self.assertEqual(2 + 2, 4)
-        EOF
-      - python -m unittest discover -s tests || true
-
-      - echo "Building Docker image..."
+      - echo Building Docker image...
       - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
-      - docker tag $REPOSITORY_URI:$IMAGE_TAG $REPOSITORY_URI:latest
-
-      - echo "Creating ECS imagedefinitions.json file..."
-      - echo "[{\"name\":\"$CONTAINER_NAME\",\"imageUri\":\"$REPOSITORY_URI:$IMAGE_TAG\"}]" > imagedefinitions.json
+      - echo Pushing image to ECR...
+      - docker push $REPOSITORY_URI:$IMAGE_TAG
+      - echo Generating imagedefinitions.json...
+      - printf '[{"name":"my-container","imageUri":"%s"}]' "$REPOSITORY_URI:$IMAGE_TAG" > imagedefinitions.json
 
   post_build:
     commands:
-      - echo "Pushing Docker images to ECR..."
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - docker push $REPOSITORY_URI:latest
-
-      - |
-        echo "Deploying to ECS..."
-        echo "ECS_CLUSTER_NAME: $ECS_CLUSTER_NAME"
-        echo "ECS_SERVICE_NAME: $ECS_SERVICE_NAME"
-        if [ -z "$ECS_CLUSTER_NAME" ]; then
-          echo "ECS_CLUSTER_NAME is empty!"
-          exit 1
-        fi
-        if [ -z "$ECS_SERVICE_NAME" ]; then
-          echo "ECS_SERVICE_NAME is empty!"
-          exit 1
-        fi
-        aws ecs update-service --cluster $ECS_CLUSTER_NAME --service $ECS_SERVICE_NAME --force-new-deployment
+      - echo Deploying to ECS...
+      - aws ecs update-service \
+          --cluster final-test-cluster \
+          --service final-test-service \
+          --force-new-deployment \
+          --region ap-south-1
 
 artifacts:
   files:
