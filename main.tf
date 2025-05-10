@@ -61,7 +61,7 @@ resource "aws_ecs_task_definition" "private_task" {
   execution_role_arn       = data.aws_iam_role.ecs_task_execution.arn
 
   container_definitions = jsonencode([{
-    name      = "my-final-test-container",
+    name      = "my-container",
     image     = "dummy", # Replaced by imagedefinitions.json in CodePipeline
     essential = true,
     portMappings = [{
