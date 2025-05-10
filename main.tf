@@ -2,6 +2,12 @@ provider "aws" {
   region = "us-east-1"
 }
 
+# Declare the input variable for image_tag
+variable "image_tag" {
+  description = "The image tag to be used for the Docker image"
+  type        = string
+}
+
 resource "aws_ecr_repository" "private_flask_repo" {
   name = "private-flask-repo"
 }
