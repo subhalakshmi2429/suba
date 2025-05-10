@@ -1,29 +1,66 @@
-version: 0.2
+provider "aws" {
+  region = "us-east-1"
+}
 
-phases:
-  pre_build:
-    commands:
-      - echo Logging in to Amazon ECR...
-      - aws --version
-      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
-      - REPOSITORY_URI=123456789012.dkr.ecr.us-east-1.amazonaws.com/private-flask-repo
-      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
-      - echo Repository URI: $REPOSITORY_URI
-      - echo Image Tag: $IMAGE_TAG
+resource "aws_ecr_repository" "private_flask_repo" {
+  name = "private-flask-repo"
+}
 
-  build:
-    commands:
-      - echo Building the Docker image...
-      - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+resource "aws_ecs_cluster" "project_cluster" {
+  name = "project-cluster"
+}
 
-  post_build:
-    commands:
-      - echo Pushing the Docker image to ECR...
-      - docker push $REPOSITORY_URI:$IMAGE_TAG
-      - echo Creating imagedefinitions.json...
-      - printf '[{"name":"my-container","imageUri":"%s"}]' $REPOSITORY_URI:$IMAGE_TAG > imagedefinitions.json
-      - cat imagedefinitions.json
+resource "aws_ecs_task_definition" "task_definition" {
+  family                   = "flask-task"
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  requires_compatibilities = ["FARGATE"]
 
-artifacts:
-  files: 
-    - imagedefinitions.json
+  container_definitions = jsonencode([
+    {
+      name      = "my-container"
+      image     = "${aws_ecr_repository.private_flask_repo.repository_url}:${var.image_tag}"
+      cpu       = 256
+      memory    = 512
+      essential = true
+    }
+  ])
+}
+
+resource "aws_ecs_service" "service" {
+  name            = "flask-service"
+  cluster         = aws_ecs_cluster.project_cluster.id
+  task_definition = aws_ecs_task_definition.task_definition.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups = [var.security_group_id]
+    assign_public_ip = false
+  }
+}
+
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action    = "sts:AssumeRole"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+        Effect    = "Allow"
+        Sid       = ""
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  role       = aws_iam_role.ecs_task_execution_role.name
+}
