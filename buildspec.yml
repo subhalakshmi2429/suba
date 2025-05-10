@@ -15,6 +15,12 @@ phases:
     commands:
       - echo Building the Docker image...
       - docker build -t $REPOSITORY_URI:$IMAGE_TAG .
+      - echo Running terraform plan...
+      - terraform plan \
+          -var "image_tag=$IMAGE_TAG" \
+          -var "subnet_ids=[\"subnet-0abe1552542f04a1f\"]" \
+          -var "security_group_id=sg-07dbebd10f0da1e32" \
+          -var "vpc_id=vpc-0a053214aa4b5471f"
 
   post_build:
     commands:

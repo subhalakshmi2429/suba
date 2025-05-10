@@ -8,28 +8,35 @@ variable "image_tag" {
   type        = string
 }
 
-# Declare the input variables for subnets and security groups
+# Declare the input variable for subnet_ids
 variable "subnet_ids" {
   description = "List of subnet IDs for the ECS service"
   type        = list(string)
 }
 
+# Declare the input variable for security_group_id
 variable "security_group_id" {
   description = "Security group ID to associate with ECS service"
   type        = string
 }
 
-# ECR repository
+# Declare the input variable for vpc_id
+variable "vpc_id" {
+  description = "VPC ID"
+  type        = string
+}
+
+# Define the ECR repository
 resource "aws_ecr_repository" "private_flask_repo" {
   name = "private-flask-repo"
 }
 
-# ECS cluster
+# Define the ECS cluster
 resource "aws_ecs_cluster" "project_cluster" {
   name = "project-cluster"
 }
 
-# ECS task definition
+# Define the ECS task definition
 resource "aws_ecs_task_definition" "task_definition" {
   family                   = "flask-task"
   network_mode             = "awsvpc"
@@ -46,7 +53,7 @@ resource "aws_ecs_task_definition" "task_definition" {
   }])
 }
 
-# ECS service
+# Define the ECS service
 resource "aws_ecs_service" "service" {
   name            = "flask-service"
   cluster         = aws_ecs_cluster.project_cluster.id
@@ -61,7 +68,7 @@ resource "aws_ecs_service" "service" {
   }
 }
 
-# IAM role for ECS task execution
+# Define IAM role for ECS task execution
 resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole"
 
@@ -80,7 +87,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 }
 
-# IAM role policy attachment for ECS task execution
+# Attach ECS task execution policy to IAM role
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
   role       = aws_iam_role.ecs_task_execution_role.name
