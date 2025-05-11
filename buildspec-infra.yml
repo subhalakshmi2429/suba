@@ -21,6 +21,7 @@ phases:
   build:
     commands:
       - echo "Running Terraform plan..."
-      - terraform plan
+      - terraform plan -var-file="terraform.tfvars"
+
       - echo "Applying Terraform to provision infrastructure..."
-      - terraform apply -auto-approve || echo "Terraform apply failed — might be due to existing resources"
+      - terraform apply -auto-approve -var-file="terraform.tfvars"
