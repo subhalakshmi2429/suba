@@ -43,7 +43,7 @@ phases:
 
       # Deploy to ECS
       - echo "Updating ECS service..."
-      - ecs deploy --task-definition flask-task:$IMAGE_TAG --cluster project-cluster-v2 --service flask-test-service
+      - ecs deploy --task-definition flask-task:$IMAGE_TAG --cluster project-cluster-v2 --service flask-test-service-v2
 
 artifacts:
   files:
