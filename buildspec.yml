@@ -45,12 +45,6 @@ phases:
       - echo "Updating ECS service..."
       - ecs deploy --task-definition flask-task:$IMAGE_TAG --cluster project-cluster --service flask-service
 
-  deploy:
-    commands:
-      - echo "Deployment completed successfully!"
-      - echo "Monitoring the service status..."
-      - aws ecs describe-services --cluster project-cluster --services flask-service
-
 artifacts:
   files:
     - imagedefinitions.json
