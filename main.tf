@@ -90,7 +90,7 @@ resource "aws_ecs_task_definition" "task_definition" {
 
 # Define the ECS service
 resource "aws_ecs_service" "service" {
-  name            = "flask-service"
+  name            = "flask-test-service"
   cluster         = aws_ecs_cluster.project_cluster.id
   task_definition = aws_ecs_task_definition.task_definition.arn
   desired_count   = 1
