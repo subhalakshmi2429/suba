@@ -1,9 +1,5 @@
 version: 0.2
 
-env:
-  variables:
-    AWS_REGION: "ap-south-1"
-
 phases:
   install:
     commands:
@@ -17,11 +13,12 @@ phases:
     commands:
       - echo "Initializing Terraform..."
       - terraform init
+      - terraform import aws_ecr_repository.private_flask_repo private-flask-repo || echo "ECR already imported"
+      - terraform import aws_iam_role.ecs_task_execution_role ecsTaskExecutionRole || echo "IAM role already imported"
 
   build:
     commands:
       - echo "Running Terraform plan..."
       - terraform plan -var-file="terraform.tfvars"
-
       - echo "Applying Terraform to provision infrastructure..."
       - terraform apply -auto-approve -var-file="terraform.tfvars"
