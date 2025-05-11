@@ -43,8 +43,8 @@ resource "aws_ecs_task_definition" "task_definition" {
   cpu                      = "256"
   memory                   = "512"
   requires_compatibilities = ["FARGATE"]
-
-  container_definitions = jsonencode([{
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  container_definitions    = jsonencode([{
     name      = "my-container"
     image     = "${aws_ecr_repository.private_flask_repo.repository_url}:${var.image_tag}"
     cpu       = 256
@@ -90,5 +90,11 @@ resource "aws_iam_role" "ecs_task_execution_role" {
 # Attach ECS task execution policy to IAM role
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  role       = aws_iam_role.ecs_task_execution_role.name
+}
+
+# Add IAM policy for ECR repository access
+resource "aws_iam_role_policy_attachment" "ecs_task_ecr_access_policy" {
+  policy_arn = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
   role       = aws_iam_role.ecs_task_execution_role.name
 }
