@@ -33,7 +33,7 @@ resource "aws_ecr_repository" "private_flask_repo" {
 
 # Define the ECS cluster
 resource "aws_ecs_cluster" "project_cluster" {
-  name = "project-cluster"
+  name = "project-cluster-v2"
 }
 
 # Define IAM role for ECS task execution (this assumes the role doesn't exist)
