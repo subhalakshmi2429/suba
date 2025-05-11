@@ -41,10 +41,6 @@ phases:
       - docker push $REPOSITORY_URI:$IMAGE_TAG
       - docker push $REPOSITORY_URI:latest
 
-      # Deploy to ECS
-      - echo "Updating ECS service..."
-      - ecs deploy --task-definition flask-task:$IMAGE_TAG --cluster project-cluster-v2 --service flask-test-service-v2
-
-artifacts:
+    artifacts:
   files:
     - imagedefinitions.json
